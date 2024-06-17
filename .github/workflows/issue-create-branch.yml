@@ -20,8 +20,8 @@ jobs:
         run: |
           title=${title// /-}
           branchname=$number-${title,,}
-          git switch -c "$branchname"
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch
           git switch -c "$branchname"
           git push -u origin "$branchname"
