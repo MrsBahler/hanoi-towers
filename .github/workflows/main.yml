@@ -1,0 +1,32 @@
+name: Create Branch on Issue Creation
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create_branch:
+    if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.labels.*.name, 'feature') || contains(github.event.issue.labels.*.name, 'chore') || contains(github.event.issue.labels.*.name, 'test') || contains(github.event.issue.labels.*.name, 'improvement') || contains(github.event.issue.labels.*.name, 'documentation')
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Create branch
+      run: |
+        ISSUE_NUMBER=${{ github.event.issue.number }}
+        ISSUE_TITLE=${{ github.event.issue.title }}
+        CATEGORY=$(echo ${{ github.event.issue.labels.*.name }} | grep -E 'bug|feature|chore|test|improvement|documentation' | head -n 1)
+        BRANCH_NAME="${CATEGORY}/${ISSUE_NUMBER}-$(echo $ISSUE_TITLE | tr ' ' '-' | tr '[:upper:]' '[:lower:]')"
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git checkout -b $BRANCH_NAME
+        git push origin $BRANCH_NAME
+
+    - name: Add branch to issue comment
+      run: |
+        ISSUE_NUMBER=${{ github.event.issue.number }}
+        CATEGORY=$(echo ${{ github.event.issue.labels.*.name }} | grep -E 'bug|feature|chore|test|improvement|documentation' | head -n 1)
+        BRANCH_NAME="${CATEGORY}/${ISSUE_NUMBER}-$(echo $ISSUE_TITLE | tr ' ' '-' | tr '[:upper:]' '[:lower:]')"
+        curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -X POST -d '{"body":"Branch created: `'$BRANCH_NAME'`"}' https://api.github.com/repos/${{ github.repository }}/issues/${ISSUE_NUMBER}/comments
