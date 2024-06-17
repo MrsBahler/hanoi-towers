@@ -10,20 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-    - name: Create issue branch
-      env:
-         number: ${{ github.event.issue.number }}
-         title: ${{ github.event.issue.title }}
-         category: $(echo ${{ github.event.issue.labels.*.name }} | grep -E 'bug|feature|chore|test|improvement|documentation' | head -n 1)
-      run: |
-         title=${title// /-}
-         branchname=${category}/${number}-$(echo $title | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
-         git switch -c "$branchname"
-         git config --global user.name 'github-actions[bot]'
-         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-         git checkout -b $BRANCH_NAME
-         git push origin $BRANCH_NAME
-         git push -u origin "$branchname"
+      - name: Create issue branch
+        env:
+          number: ${{ github.event.issue.number }}
+          title: ${{ github.event.issue.title }}
+        run: |
+          title=${title// /-}
+          branchname=$number-${title,,}
+          git switch -c "$branchname"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branchname"
+          git push -u origin "$branchname"
