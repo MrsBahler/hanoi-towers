@@ -15,8 +15,11 @@ jobs:
 
     - name: Extract issue number from branch name
       run: |
+        echo "Branch reference: $GITHUB_REF"
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        ISSUE_NUMBER=$(echo $BRANCH_NAME | grep -oP '(?<=\/)\d+')
+        echo "Branch name: $BRANCH_NAME"
+        ISSUE_NUMBER=$(echo $BRANCH_NAME | grep -oP '(?<=/)\d+')
+        echo "Extracted issue number: $ISSUE_NUMBER"
         if [ -z "$ISSUE_NUMBER" ]; then
           echo "No issue number found in branch name"
           exit 1
