@@ -10,10 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Extract issue number from branch name
       run: |
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        ISSUE_NUMBER=$(echo $BRANCH_NAME | grep -oP '(?<=/)\d+')
+        ISSUE_NUMBER=$(echo $BRANCH_NAME | grep -oP '(?<=\/)\d+')
+        if [ -z "$ISSUE_NUMBER" ]; then
+          echo "No issue number found in branch name"
+          exit 1
+        fi
         echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
 
     - name: Move issue to In Progress
