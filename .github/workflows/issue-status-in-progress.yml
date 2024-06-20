@@ -11,8 +11,6 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
-
     - name: Extract issue number from branch name
       run: |
         echo "Branch reference: $GITHUB_REF"
@@ -33,5 +31,5 @@ jobs:
       run: |
         curl -H "Authorization: token $GITHUB_TOKEN" \
         -X POST \
-        -d '{"state":"open","labels":["in progress"]}' \
+        -d '{"status":"In progress"}' \
         https://api.github.com/repos/${{ github.repository }}/issues/${ISSUE_NUMBER}
