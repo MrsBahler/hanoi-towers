@@ -11,6 +11,8 @@ jobs:
 
     steps:
     - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Extract issue number from branch name
       run: |
         echo "Branch reference: $GITHUB_REF"
@@ -23,7 +25,6 @@ jobs:
           exit 1
         fi
         echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
-
     - name: Move issue to In Progress
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
