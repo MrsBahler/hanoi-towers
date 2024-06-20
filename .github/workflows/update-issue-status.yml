@@ -1,0 +1,40 @@
+name: Update Issue Status
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  update-issue-status:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract issue number from branch name
+        id: extract_issue_number
+        run: |
+          branch_name=${GITHUB_REF#refs/heads/}
+          issue_number=$(echo $branch_name | grep -oP '\d+')
+          echo "::set-output name=issue_number::$issue_number"
+
+      - name: Get Issue Node ID
+        id: get_issue_node_id
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_number=${{ steps.extract_issue_number.outputs.issue_number }}
+          issue_query=$(jq -nc --arg issue_number "$issue_number" '{query: "query { repository(owner: \\"${{ github.repository_owner }}\\", name: \\"${{ github.event.repository.name }}\\") { issue(number: $issue_number) { id } } }"}')
+          response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$issue_query" https://api.github.com/graphql)
+          issue_node_id=$(echo "$response" | jq -r '.data.repository.issue.id')
+          echo "::set-output name=issue_node_id::$issue_node_id"
+
+      - name: Update Issue Status to "In Progress" in GitHub Project
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_node_id=${{ steps.get_issue_node_id.outputs.issue_node_id }}
+          mutation=$(jq -nc --arg issue_node_id "$issue_node_id" '{query: "mutation { updateIssue(input: {id: $issue_node_id, state: IN_PROGRESS}) { issue { id } } }"}')
+          curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$mutation" https://api.github.com/graphql
