@@ -32,11 +32,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          project_query=$(jq -nc --arg org "${{ github.repository_owner }}" --arg number "1" '{query: "query { organization(login: \($org)) { projectV2(number: \($number)) { id } } }"}')
+          project_query=$(jq -nc --arg login "MrsBahler" --arg number "1" '{query: "query { user(login: \"\($login)\") { projectV2(number: \($number)) { id } } }"}')
           echo "Project Query: $project_query"
           response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$project_query" https://api.github.com/graphql)
           echo "Response: $response"
-          project_node_id=$(echo "$response" | jq -r '.data.organization.projectV2.id')
+          project_node_id=$(echo "$response" | jq -r '.data.user.projectV2.id')
           echo "Project Node ID: $project_node_id"
           echo "::set-output name=project_node_id::$project_node_id"
 
@@ -81,7 +81,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROJECT_ITEM_ID: ${{ steps.get_project_item_id.outputs.project_item_id }}
         run: |
-          column_id="47fc9ee4"  # Your actual column ID for "In Progress"
+          column_id="47fc9ee4"
           move_item_mutation=$(jq -nc --arg project_item_id "$PROJECT_ITEM_ID" --arg column_id "$column_id" '{query: "mutation { moveProjectCard(input: {cardId: \($project_item_id), columnId: \($column_id)}) { clientMutationId } }"}')
           echo "Move Item Mutation: $move_item_mutation"
           response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$move_item_mutation" https://api.github.com/graphql)
