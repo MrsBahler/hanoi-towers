@@ -27,6 +27,19 @@ jobs:
           fi
           echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
 
+      - name: Get Project Node ID
+        id: get_project_node_id
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          project_query=$(jq -nc --arg org "${{ github.repository_owner }}" --arg number "1" '{query: "query { organization(login: \($org)) { projectV2(number: \($number)) { id } } }"}')
+          echo "Project Query: $project_query"
+          response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$project_query" https://api.github.com/graphql)
+          echo "Response: $response"
+          project_node_id=$(echo "$response" | jq -r '.data.organization.projectV2.id')
+          echo "Project Node ID: $project_node_id"
+          echo "::set-output name=project_node_id::$project_node_id"
+          
       - name: Get Issue Node ID
         id: get_issue_node_id
         env:
@@ -41,27 +54,30 @@ jobs:
           echo "Issue Node ID: $issue_node_id"
           echo "::set-output name=issue_node_id::$issue_node_id"
 
-      - name: Get Project Card ID
-        id: get_project_card_id
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          issue_node_id=${{ steps.get_issue_node_id.outputs.issue_node_id }}
-          project_card_query=$(jq -nc --arg issue_node_id "$issue_node_id" '{query: "query { node(id: \"\($issue_node_id)\") { ... on Issue { projectCards(first: 1) { edges { node { id } } } } } }"}')
-          echo "Project Card Query: $project_card_query"
-          response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$project_card_query" https://api.github.com/graphql)
-          echo "Response: $response"
-          project_card_id=$(echo "$response" | jq -r '.data.node.projectCards.edges[0].node.id')
-          echo "Project Card ID: $project_card_id"
-          echo "::set-output name=project_card_id::$project_card_id"
 
-      - name: Move Project Card to "In Progress"
+      - name: Get Project Item ID
+        id: get_project_item_id
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NODE_ID: ${{ steps.get_issue_node_id.outputs.issue_node_id }}
+          PROJECT_NODE_ID: ${{ steps.get_project_node_id.outputs.project_node_id }}
         run: |
-          project_card_id=${{ steps.get_project_card_id.outputs.project_card_id }}
+          project_item_query=$(jq -nc --arg project_id "$PROJECT_NODE_ID" --arg content_id "$ISSUE_NODE_ID" '{query: "mutation { addProjectV2ItemById(input: {projectId: \($project_id), contentId: \($content_id)}) { item { id } } }"}')
+          echo "Project Item Query: $project_item_query"
+          response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$project_item_query" https://api.github.com/graphql)
+          echo "Response: $response"
+          project_item_id=$(echo "$response" | jq -r '.data.addProjectV2ItemById.item.id')
+          echo "Project Item ID: $project_item_id"
+          echo "::set-output name=project_item_id::$project_item_id"
+
+      - name: Move Project Item to "In Progress"
+        if: steps.get_project_item_id.outputs.project_item_id != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_ITEM_ID: ${{ steps.get_project_item_id.outputs.project_item_id }}
+        run: |
           column_id="47fc9ee4"
-          move_card_mutation=$(jq -nc --arg project_card_id "$project_card_id" --arg column_id "$column_id" '{query: "mutation { moveProjectCard(input: {cardId: \($project_card_id), columnId: \($column_id)}) { clientMutationId } }"}')
-          echo "Move Card Mutation: $move_card_mutation"
-          response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$move_card_mutation" https://api.github.com/graphql)
+          move_item_mutation=$(jq -nc --arg project_item_id "$PROJECT_ITEM_ID" --arg column_id "$column_id" '{query: "mutation { moveProjectCard(input: {cardId: \($project_item_id), columnId: \($column_id)}) { clientMutationId } }"}')
+          echo "Move Item Mutation: $move_item_mutation"
+          response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$move_item_mutation" https://api.github.com/graphql)
           echo "Response: $response"
