@@ -34,7 +34,9 @@ jobs:
           ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
         run: |
           issue_query=$(jq -nc --arg issue_number "$ISSUE_NUMBER" --arg owner "${{ github.repository_owner }}" --arg name "${{ github.event.repository.name }}" '{query: "query { repository(owner: \($owner), name: \($name)) { issue(number: \($issue_number)) { id } } }"}')
+          echo "Issue Query: $issue_query"
           response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$issue_query" https://api.github.com/graphql)
+          echo "Response: $response"
           issue_node_id=$(echo "$response" | jq -r '.data.repository.issue.id')
           echo "Issue Node ID: $issue_node_id"
           echo "::set-output name=issue_node_id::$issue_node_id"
@@ -46,7 +48,9 @@ jobs:
         run: |
           issue_node_id=${{ steps.get_issue_node_id.outputs.issue_node_id }}
           project_card_query=$(jq -nc --arg issue_node_id "$issue_node_id" '{query: "query { node(id: \($issue_node_id)) { ... on Issue { projectCards(first: 1) { edges { node { id } } } } } }"}')
+          echo "Project Card Query: $project_card_query"
           response=$(curl -s -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$project_card_query" https://api.github.com/graphql)
+          echo "Response: $response"
           project_card_id=$(echo "$response" | jq -r '.data.node.projectCards.edges[0].node.id')
           echo "Project Card ID: $project_card_id"
           echo "::set-output name=project_card_id::$project_card_id"
